@@ -26,6 +26,8 @@ public class MustJS {
     private void onLoadConfig(final ModConfigEvent event) {
         if (event.getConfig().getSpec() == Config.SPEC) {
             try {
+                ModScripts.createReadme("README.txt");
+                ModScripts.createReadme("LEIAME.txt");
                 if (Config.ADD_BASE.get()) {
                     ModScripts.copyScript("CreateBaseFunctions.js");
                     LOGGER.info("Script CreateBaseFunctions.js copiado com sucesso!");
