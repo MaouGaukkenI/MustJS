@@ -188,7 +188,7 @@ function cutting (e, output, input, time){
  *   true
  * )
  */
-function deploying (e, output, held, base, keep){
+function deploying (e, output, base, held, keep){
     if (typeof output !== "object" || !output.id) {
         console.error("Deploying: Invalid output: must be an object created with itemOutput() or itemOutputStack().");
         return;
@@ -211,7 +211,7 @@ function deploying (e, output, held, base, keep){
 
     e.custom({
         "type": "create:deploying",
-        "ingredients": [held, base],
+        "ingredients": [base, held],
         "keep_held_item": keep,
         "results": [output]
     });
@@ -851,7 +851,7 @@ function cuttingS (output, input, time){
  * @param {boolean} keep - Whether the held item is preserved (`true`) or consumed (`false`).
  * @returns {Object} - JSON object representing the deploying step.
  */
-function deployingS (output, held, base, keep){
+function deployingS (output, base, held, keep){
     if (typeof output !== "object" || !output.id) {
         console.error("Sequenced_assembly: deployingS - Invalid output: must be an object created with itemOutput().");
         return null;
@@ -877,7 +877,7 @@ function deployingS (output, held, base, keep){
 
     return {
         "type": "create:deploying",
-        "ingredients": [held, base],
+        "ingredients": [base, held],
         "keep_held_item": keep,
         "results": [output]
     };
