@@ -17,5 +17,21 @@ public class Config {
             .comment("Generate the functions for fluid manipulation in recipes")
             .define("generateFluidManipulator", true);
 
+    public static final ModConfigSpec.BooleanValue ADD_APPLIED = BUILDER
+            .comment("Generate the functions for Applied Energistics 2 recipes")
+            .define("generateApplied", true);
+
+    public static final ModConfigSpec.BooleanValue ADD_EXTRA_CREATE = BUILDER
+            .comment("Generate the extra functions for Create mod recipes")
+            .define("generateExtraCreate", true);
+
+    public static final ModConfigSpec.BooleanValue ADD_MINECRAFT = BUILDER
+            .comment("Generate the functions for Minecraft recipes and item tags")
+            .define("generateMinecraft", true);
+
+    public static final ModConfigSpec.BooleanValue ADD_REMOVE = BUILDER
+            .comment("Generate the functions for removing and replacing recipes")
+            .define("generateRemove", true);
+
     static final ModConfigSpec SPEC = BUILDER.build();
 }

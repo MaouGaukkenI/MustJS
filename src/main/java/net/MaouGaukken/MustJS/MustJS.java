@@ -28,33 +28,30 @@ public class MustJS {
             try {
                 ModScripts.createReadme("README.txt");
                 ModScripts.createReadme("LEIAME.txt");
-                if (Config.ADD_BASE.get()) {
-                    ModScripts.copyScript("CreateBaseFunctions.js");
-                    LOGGER.info("Script CreateBaseFunctions.js copiado com sucesso!");
-                } else {
-                    ModScripts.deleteScript("CreateBaseFunctions.js");
-                    LOGGER.info("Script CreateBaseFunctions.js removido!");
-                }
-
-                if (Config.ADD_FLUID_MANIPULATOR.get()) {
-                    ModScripts.copyScript("FluidManipulator.js");
-                    LOGGER.info("Script FluidManipulator.js copiado com sucesso!");
-                } else {
-                    ModScripts.deleteScript("FluidManipulator.js");
-                    LOGGER.info("Script FluidManipulator.js removido!");
-                }
-
-                if (Config.ADD_ITEM_MANIPULATOR.get()) {
-                    ModScripts.copyScript("ItemManipulator.js");
-                    LOGGER.info("Script ItemManipulator.js copiado com sucesso!");
-                } else  {
-                    ModScripts.deleteScript("ItemManipulator.js");
-                    LOGGER.info("Script ItemManipulator.js removido!");
-                }
             } catch (IOException e) {
-                LOGGER.error("Erro ao manipular script", e);
+                LOGGER.error("Erro ao criar os arquivos README", e);
             }
+
+            syncScript(Config.ADD_BASE.get(), "CreateBaseFunctions.js");
+            syncScript(Config.ADD_FLUID_MANIPULATOR.get(), "FluidManipulator.js");
+            syncScript(Config.ADD_ITEM_MANIPULATOR.get(), "ItemManipulator.js");
+            syncScript(Config.ADD_APPLIED.get(), "Applied.js");
+            syncScript(Config.ADD_EXTRA_CREATE.get(), "ExtraCreate.js");
+            syncScript(Config.ADD_MINECRAFT.get(), "Minecraft.js");
+            syncScript(Config.ADD_REMOVE.get(), "Remove.js");
+        }
+    }
+    private static void syncScript(boolean enabled, String script) {
+        try {
+            if (enabled) {
+                ModScripts.copyScript(script);
+                LOGGER.info("Script {} copiado com sucesso!", script);
+            } else {
+                ModScripts.deleteScript(script);
+                LOGGER.info("Script {} removido!", script);
+            }
+        } catch (IOException e) {
+            LOGGER.error("Erro ao manipular script {}", script, e);
         }
     }
 }
-
