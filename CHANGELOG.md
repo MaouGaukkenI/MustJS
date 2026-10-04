@@ -1,4 +1,12 @@
 # Changelog
+## [0.0.4] - 2026-10-4
+
+### Changed
+
+* Updated `ExtraCreate` recipe definitions.
+* Updated `Minecraft` recipe definitions.
+* Updated `Remove` recipe definitions.
+* Adjusted recipe modifications and removals to match the latest MustJS changes.
 
 All notable changes to this project will be documented in this file.
 
