@@ -5,6 +5,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.FileVisitResult;
+import java.nio.file.attribute.BasicFileAttributes;
 
 public class ModScripts {
     private static final String ORIGIN_FOLDER = "/templates/JavaScript";
@@ -77,5 +80,36 @@ public class ModScripts {
         if (Files.deleteIfExists(target)) {
             // O arquivo foi encontrado e excluído.
         }
+    }
+
+    public static void deleteMustJsFolder() throws IOException {
+        if (!Files.exists(DEST_FOLDER)) {
+            return;
+        }
+
+        Files.walkFileTree(DEST_FOLDER, new SimpleFileVisitor<>() {
+
+            @Override
+            public FileVisitResult visitFile(
+                    Path file,
+                    BasicFileAttributes attrs
+            ) throws IOException {
+                Files.delete(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(
+                    Path dir,
+                    IOException exc
+            ) throws IOException {
+                if (exc != null) {
+                    throw exc;
+                }
+
+                Files.delete(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 }

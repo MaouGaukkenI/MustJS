@@ -33,5 +33,9 @@ public class Config {
             .comment("Generate the functions for removing and replacing recipes")
             .define("generateRemove", true);
 
+    public static final ModConfigSpec.BooleanValue ADD_ARS_NOUVEAU = BUILDER
+            .comment("Generate the functions for ars nouveau recipes")
+            .define("generateArs", true);
+
     static final ModConfigSpec SPEC = BUILDER.build();
 }

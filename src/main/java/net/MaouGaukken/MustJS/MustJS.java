@@ -16,9 +16,10 @@ public class MustJS {
     public static final String MOD_ID = "mustjs";
     private static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 
-    public MustJS(IEventBus modEventBus, ModContainer modContainer) {
+    public MustJS(IEventBus modEventBus, ModContainer modContainer) throws IOException {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
 
+        ModScripts.deleteMustJsFolder();
         // registra listener para quando a config for carregada
         modEventBus.addListener(this::onLoadConfig);
     }
@@ -32,9 +33,12 @@ public class MustJS {
                 LOGGER.error("Erro ao criar os arquivos README", e);
             }
 
+            syncScript(null, true, "MustJS.js");
             syncScript("Create", Config.ADD_BASE.get(), "CreateBaseFunctions.js");
             syncScript("Create", Config.ADD_EXTRA_CREATE.get(), "ExtraCreate.js");
             syncScript("AE2", Config.ADD_APPLIED.get(), "Applied.js");
+            syncScript("Ars", Config.ADD_ARS_NOUVEAU.get(), "ArsNouveau.js");
+            syncScript("Ars", Config.ADD_ARS_NOUVEAU.get(), "ArsManipulator.js");
             syncScript(null, Config.ADD_FLUID_MANIPULATOR.get(), "FluidManipulator.js");
             syncScript(null, Config.ADD_ITEM_MANIPULATOR.get(), "ItemManipulator.js");
             syncScript(null, Config.ADD_MINECRAFT.get(), "Minecraft.js");
