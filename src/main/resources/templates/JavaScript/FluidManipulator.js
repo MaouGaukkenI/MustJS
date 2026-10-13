@@ -5,7 +5,8 @@
  * @param {number} fluid_amount - The amount of fluid in millibuckets.
  * @returns {Object} - JSON object representing the fluid input.
  *
- * Usage example: fluidInput("minecraft:lava", 1000)
+ * @example:
+ * fluidInput("minecraft:lava", 1000)
  * - A 1000mb of lava (one bucket)
  */
 function fluidInput (fluid_id, fluid_amount){
@@ -33,7 +34,8 @@ function fluidInput (fluid_id, fluid_amount){
  * @param {number} fluid_amount - The amount of fluid in millibuckets.
  * @returns {Object} - JSON object representing the fluid output.
  *
- * Usage example: fluidOutput("minecraft:lava", 1000)
+ * @example:
+ * fluidOutput("minecraft:lava", 1000)
  * - A 1000mb of lava (one bucket)
  */
 function fluidOutput (fluid_id, fluid_amount){

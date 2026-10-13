@@ -3,11 +3,14 @@
  *
  * @param {Object} e - The recipe event object.
  * @param {Object|string} output - The recipe output item.
+ *                         Use helper functions like `itemOutput()`.
  * @param {Object} input - The recipe input ingredient.
+ *                         Use helper functions such as `itemInput()` or `itemInputTag()`.
  * @param {number} experience - The amount of experience granted when the recipe is completed.
  * @param {number} time - The cooking time in ticks.
  *
- * Usage example: smelting(
+ * @example:
+ * smelting(
  *     e,
  *     itemOutput("minecraft:iron_ingot"),
  *     itemInput("minecraft:raw_iron"),
@@ -32,11 +35,14 @@ function smelting(e, output, input, experience, time) {
  *
  * @param {Object} e - The recipe event object.
  * @param {Object|string} output - The recipe output item.
+ *                         Use helper functions like `itemOutput()`.
  * @param {Object} input - The recipe input ingredient.
+ *                         Use helper functions such as `itemInput()` or `itemInputTag()`.
  * @param {number} experience - The amount of experience granted when the recipe is completed.
  * @param {number} time - The cooking time in ticks.
  *
- * Usage example: blasting(
+ * @example:
+ * blasting(
  *     e,
  *     itemOutput("minecraft:iron_ingot"),
  *     itemInput("minecraft:raw_iron"),
@@ -61,11 +67,14 @@ function blasting(e, output, input, experience, time) {
  *
  * @param {Object} e - The recipe event object.
  * @param {Object|string} output - The recipe output item.
+ *                         Use helper functions like `itemOutput()`.
  * @param {Object} input - The recipe input ingredient.
+ *                         Use helper functions such as `itemInput()` or `itemInputTag()`.
  * @param {number} experience - The amount of experience granted when the recipe is completed.
  * @param {number} time - The cooking time in ticks.
  *
- * Usage example: smoking(
+ * @example:
+ * smoking(
  *     e,
  *     itemOutput("minecraft:cooked_beef"),
  *     itemInput("minecraft:beef"),
@@ -90,10 +99,13 @@ function smoking(e, output, input, experience, time) {
  *
  * @param {Object} e - The recipe event object.
  * @param {Object|string} output - The recipe output item.
+ *                         Use helper functions like `itemOutput()`.
  * @param {Object} input - Object containing the ingredients assigned to each pattern key.
+ *                         Use helper functions such as `itemInputKey()` or `itemInputTagKey()`.
  * @param {Array<string>} pattern - Array of strings representing the crafting pattern.
  *
- * Usage example: shaped(
+ * @example:
+ * shaped(
  *     e,
  *     itemOutput("minecraft:iron_pickaxe"),
  *     Object.assign(
@@ -126,9 +138,13 @@ function shaped(e, output, input, pattern) {
  *
  * @param {Object} e - The recipe event object.
  * @param {Object|string} output - The recipe output item.
+ *                         Use helper functions like `itemOutput()`.
  * @param {Array<Object>} input - Array containing the recipe ingredients.
+ *                         Use helper functions such as `itemInput()` or `itemInputTag()`.
+ *                         All items must be wrapped inside an array [].
  *
- * Usage example: shapeless(
+ * @example:
+ * shapeless(
  *     e,
  *     itemOutput("minecraft:stick"),
  *     [
@@ -151,17 +167,20 @@ function shapeless(e, output, input) {
  * Creates a Minecraft stonecutting recipe.
  *
  * @param {Object} e - The recipe event object.
- * @param {Object} input - The recipe input ingredient.
  * @param {Object|string} output - The recipe output item.
+ *                         Use helper functions like `itemOutput()`.
+ * @param {Object} input - The recipe input ingredient.
+ *                         Use helper functions such as `itemInput()` or `itemInputTag()`.
  *
- * Usage example: stonecutting(
+ * @example:
+ * stonecutting(
  *     e,
- *     itemInput("minecraft:stone"),
- *     itemOutput("minecraft:stone_slab")
+ *     itemOutput("minecraft:stone_slab"),
+ *     itemInput("minecraft:stone")
  * )
  * - Cuts the specified input item into the output item using a stonecutter.
  */
-function stonecutting(e, input, output) {
+function stonecutting(e, output, input) {
     e.custom({
         "type": "minecraft:stonecutting",
         "ingredient": input,
@@ -174,11 +193,16 @@ function stonecutting(e, input, output) {
  *
  * @param {Object} e - The recipe event object.
  * @param {Object|string} output - The recipe output item.
+ *                         Use helper functions like `itemOutput()`.
  * @param {Object} template - The smithing template ingredient.
+ *                         Use helper functions such as `itemInput()`.
  * @param {Object} base - The base item ingredient.
+ *                         Use helper functions such as `itemInput()`.
  * @param {Object} addition - The additional ingredient.
+ *                         Use helper functions such as `itemInput()`.
  *
- * Usage example: smithing(
+ * @example:
+ * smithing(
  *     e,
  *     itemOutput("minecraft:netherite_sword"),
  *     itemInput("minecraft:netherite_upgrade_smithing_template"),
@@ -204,7 +228,8 @@ function smithing(e, output, template, base, addition) {
  * @param {string} tagName - The identifier of the item tag to modify.
  * @param {Array<string>} itens - Array of item identifiers to add to the tag.
  *
- * Usage example: addTag(
+ * @example:
+ * addTag(
  *     e,
  *     "c:ingots/iron",
  *     [
@@ -227,7 +252,8 @@ function addTag(e, tagName, itens) {
  * @param {Object|string} item_a - The first item.
  * @param {Object|string} item_b - The second item.
  *
- * Usage example: alternate(
+ * @example:
+ * alternate(
  *     e,
  *     'minecraft:iron_ingot',
  *     'minecraft:iron_nugget'

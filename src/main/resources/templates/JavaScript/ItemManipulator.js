@@ -4,7 +4,8 @@
  * @param {string} id - The item identifier (e.g., "minecraft:iron_ingot").
  * @returns {Object} - JSON object representing the item output.
  *
- * Usage example: itemOutput("minecraft:iron_ingot")
+ * @example:
+ * itemOutput("minecraft:iron_ingot")
  * A one iron ingot
  */
 function itemOutput (id){
@@ -23,7 +24,8 @@ function itemOutput (id){
  * @param {number} count - The number of items in the stack.
  * @returns {Object} - JSON object representing the item stack output.
  *
- * Usage example: itemOutputStack("minecraft:iron_ingot", 2)
+ * @example:
+ * itemOutputStack("minecraft:iron_ingot", 2)
  * Two iron ingots
  */
 function itemOutputStack (id, count){
@@ -52,7 +54,8 @@ function itemOutputStack (id, count){
  * @param {number} chance - The probability (0–1) of receiving the item.
  * @returns {Object} - JSON object representing the item output with chance.
  *
- * Usage example: itemOutputChance("minecraft:iron_ingot", 0.5)
+ * @example:
+ * itemOutputChance("minecraft:iron_ingot", 0.5)
  * A fifty percent chance of getting an iron ingot
  */
 function itemOutputChance (id, chance){
@@ -80,7 +83,8 @@ function itemOutputChance (id, chance){
  * @param {number} count - The number of items in the stack.
  * @returns {Object} - JSON object representing the item output with chance and count.
  *
- * Usage example: itemOutputChance("minecraft:iron_ingot", 0.5, 3)
+ * @example:
+ * itemOutputChance("minecraft:iron_ingot", 0.5, 3)
  * A fifty percent chance of getting three iron ingot
  */
 function itemOutputChanceStack (id, chance, count){
@@ -112,7 +116,8 @@ function itemOutputChanceStack (id, chance, count){
  * @param {string} item - The item identifier.
  * @returns {Object} - JSON object representing the item input.
  *
- * Usage example: itemInput("minecraft:iron_ingot")
+ * @example:
+ * itemInput("minecraft:iron_ingot")
  * sends an iron ingot
  */
 function itemInput (item){
@@ -130,7 +135,8 @@ function itemInput (item){
  * @param {string} tag - The tag identifier (e.g., "forge:ingots/iron").
  * @returns {Object} - JSON object representing the item input by tag.
  *
- * Usage example: itemInput("minecraft:logs")
+ * @example:
+ * itemInput("minecraft:logs")
  * Sends an item from the minecraft:logs tag.
  */
 function itemInputTag (tag){
@@ -150,7 +156,8 @@ function itemInputTag (tag){
  * @param {string} id - The item identifier.
  * @returns {Object} - JSON object mapping the symbol to the item.
  *
- * Usage example: itemInputKey("A", "minecraft:iron_ingot")
+ * @example:
+ * itemInputKey("A", "minecraft:iron_ingot")
  * send an iron ingot with the symbol A
  */
 function itemInputKey (symbol, id){
@@ -177,7 +184,8 @@ function itemInputKey (symbol, id){
  * @param {string} tag - The tag identifier.
  * @returns {Object} - JSON object mapping the symbol to the tag.
  *
- * Usage example: itemInputKey("A", "minecraft:iron_ingot")
+ * @example:
+ * itemInputKey("A", "minecraft:iron_ingot")
  * Sends an item from the minecraft:logs tag, with the symbol A.
  */
 function itemInputTagKey (symbol, tag){

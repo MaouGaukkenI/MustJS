@@ -14,7 +14,7 @@
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * compacting(
  *   itemOutput("minecraft:iron_ingot"),
  *   [
@@ -31,7 +31,7 @@
  *   "heated"
  * )
  *
- * Notes:
+ * @remarks:
  * - If `heat` is false, the recipe will not require heat.
  * - If `heat` is "heated" or "superheated", the recipe will include a heat requirement.
  * - Invalid values for `heat` will trigger an error message in the console.
@@ -82,7 +82,7 @@ function compacting (e, output, inputs, heat){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * crushing(
  *   [
  *      itemOutput("minecraft:gravel"),
@@ -133,7 +133,7 @@ function crushing (e, output, input, time){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * cutting(
  *   itemOutput("minecraft:oak_planks"),
  *   itemInput("minecraft:oak_log"),
@@ -180,7 +180,7 @@ function cutting (e, output, input, time){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * deploying(
  *   itemOutput("minecraft:iron_door"),
  *   itemInput("minecraft:iron_ingot"),
@@ -231,7 +231,7 @@ function deploying (e, output, base, held, keep){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * emptying(
  *   itemOutput("minecraft:bucket"),
  *   fluidOutput("minecraft:water", 1000),
@@ -275,7 +275,7 @@ function emptying (e, output_item, output_fluid, input){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * filling(
  *   itemOutput("minecraft:honey_bottle"),
  *   itemInput("minecraft:glass_bottle"),
@@ -318,7 +318,7 @@ function filling (e, output, input, fluid){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * haunting(
  *   [
  *      itemOutput("minecraft:soul_sand")
@@ -363,14 +363,14 @@ function haunting (e, output, input){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * item_application(
  *   itemOutput("minecraft:grass_block"),
  *   itemInput("minecraft:dirt"),
  *   itemInput("minecraft:wheat_seeds")
  * );
  *
- * Notes:
+ * @remarks:
  * - Automatically generates a deploying recipe.
  */
 function item_application(e, output, input_block, input_item){
@@ -410,7 +410,7 @@ function item_application(e, output, input_block, input_item){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * mechanical_crafting(
  *   itemOutputStack("minecraft:diamond_pickaxe", 1),
  *   Object.assign(
@@ -424,7 +424,7 @@ function item_application(e, output, input_block, input_item){
  *     " B "
  *   ]
  * )
- * Notes:
+ * @remarks:
  * - If the output is a tool, the quantity must be 1. if it is an item or a block, it can be more.
  */
 function mechanical_crafting (e, output, input, pattern){
@@ -494,7 +494,7 @@ function mechanical_crafting (e, output, input, pattern){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * milling([
  *   itemOutputStack("create:wheat_flour", 4),
  *   itemOutputChanceStack("create:wheat_flour", 2)
@@ -550,7 +550,7 @@ function milling (e, output, input, time){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * mixing(
  *   [itemOutputStack("minecraft:cookie", 8)],
  *   [
@@ -560,7 +560,7 @@ function milling (e, output, input, time){
  *   "heated"
  * );
  *
- * Notes:
+ * @remarks:
  * - If `heat` is false, the recipe will not require heat.
  * - If `heat` is "heated" or "superheated", the recipe will include a heat requirement.
  * - Invalid values for `heat` will trigger an error message in the console.
@@ -616,7 +616,7 @@ function mixing (e, output, input, heat){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * pressing(
  *   itemOutput("minecraft:iron_plate"),
  *   itemInput("minecraft:iron_ingot")
@@ -657,7 +657,7 @@ function pressing (e, output, input){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * polishing(
  *   itemOutput("minecraft:polished_quartz"),
  *   itemInput("minecraft:quartz_block")
@@ -699,7 +699,7 @@ function polishing (e, output, input){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * splashing(
  *   [itemOutputStack("minecraft:clay_ball", 4)],
  *   itemInput("minecraft:sand")
@@ -750,7 +750,7 @@ function splashing (e, output, input){
  *
  * @returns {void} - This function does not return a value; it registers the recipe.
  *
- * Usage example:
+ * @example:
  * sequenced_assembly([
  *     itemOutputChance("create:precision_mechanism", 0.5),
  *     itemOutputChance("create:iron_sheet", 0.5),

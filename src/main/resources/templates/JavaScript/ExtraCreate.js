@@ -5,7 +5,7 @@
  * @param {Array<string>} outputs - Array of item identifiers corresponding to each input tag.
  * @param {Array<string>} inputs - Array of item tag identifiers used as recipe inputs.
  *
- * Usage example:
+ * @example:
  *  pressingPairs(
  *      e,
  *      [
@@ -15,6 +15,8 @@
  *          "c:ingots/iron"
  *      ]
  *  )
+ *
+ *  @remarks:
  * - Creates one pressing recipe for each input/output pair.
  * - Each input is converted into an item tag using itemInputTag().
  * - The output at each index is paired with the input tag at the same index.
@@ -35,7 +37,7 @@ function pressingPairs(e, outputs, inputs) {
  * @param {Array<string>} press - Array of item identifiers representing the items used for deployment.
  * @param {Array<number>} loop - Array defining the number of Sequenced Assembly loops for each recipe.
  *
- * Usage example:
+ * @example:
  * const mechanism = [
  *     'createmechanisms:storage_mechanism'
  * ]
@@ -52,6 +54,7 @@ function pressingPairs(e, outputs, inputs) {
  *
  * sequenceDeploy(e, processor, base, mechanism, loop)
  *
+ * @remarks:
  * - Creates a deploying recipe for each input/output pair.
  * - If the corresponding loop value is greater than 1, a Sequenced Assembly recipe is created.
  * - If the loop value is 1 or lower, a standard deploying recipe is created.
@@ -88,7 +91,7 @@ function sequenceDeploy(e, outputs, inputs, press, loop) {
  * @param {Array<string>} outputs - Array of item identifiers representing the final processor outputs.
  * @param {Array<string>} inputs - Array of item identifiers representing the initial printed circuit inputs.
  *
- * Usage example:
+ * @example:
  * const circuit = [
  *     'ae2:printed_engineering_processor'
  * ]
@@ -99,6 +102,7 @@ function sequenceDeploy(e, outputs, inputs, press, loop) {
  *
  * processorForge(e, processors, circuit)
  *
+ * @remarks:
  * - Creates one Sequenced Assembly recipe for each input/output pair.
  * - The corresponding item in inputs is used as the starting item.
  * - 'ae2:printed_silicon' is deployed onto the item first.
@@ -138,7 +142,7 @@ function processorForge(e, outputs, inputs) {
  *                                       the transitional items used during the
  *                                       Sequenced Assembly process.
  *
- * Usage example:
+ * @example:
  * enderiamTier(
  *     e,
  *     [
@@ -152,6 +156,7 @@ function processorForge(e, outputs, inputs) {
  *     ]
  * )
  *
+ * @remarks:
  * - Creates one Sequenced Assembly recipe for each mechanism.
  * - Uses 'alltheores:enderium_plate' as the starting item.
  * - Presses the transitional item.
@@ -193,8 +198,9 @@ function enderiamTier(e, mechanismsI, mechanismsO, transitional) {
  * @param {Array<string>} sawTier - Array of item identifiers representing the saw outputs.
  * @param {Array<Object>} materialInput - Array of recipe ingredients representing
  *                                        the material used for each saw tier.
+ *                                        Use helper functions such as itemInputKey() or itemInputTagKey().
  *
- * Usage example:
+ * @example:
  * sawRecipe(
  *     e,
  *     [
@@ -205,6 +211,7 @@ function enderiamTier(e, mechanismsI, mechanismsO, transitional) {
  *     ]
  * )
  *
+ * @remarks:
  * - Creates one shaped recipe for each saw tier.
  * - Uses 'minecraft:wooden_slabs' as the A ingredient.
  * - Uses 'c:rods/wooden' as the B ingredient.
@@ -243,7 +250,8 @@ function sawRecipe(e, sawTier, materialInput){
  * @param {boolean} tag - Whether the addition should be treated as an item tag. Defaults to false.
  * @param {number} stack - The amount of output items produced. Defaults to 0, which uses the default output amount.
  *
- * Usage example: smithing_deploying(
+ * @example:
+ * smithing_deploying(
  *     e,
  *     'createmechanisms:portable_chute',
  *     'createmechanisms:zinc_mechanism',
@@ -253,6 +261,7 @@ function sawRecipe(e, sawTier, materialInput){
  *     1
  * )
  *
+ * @remarks:
  * - Creates a vanilla smithing recipe using the specified template, base, and addition.
  * - Creates a Create sequenced assembly using two deploying steps.
  * - The first deploying step applies the template to the base item.
@@ -316,13 +325,15 @@ function smithing_deploying(e, output, template, base, addition, tag, stack) {
  * @param {Object|string} casing - The casing item or item tag applied to the base.
  * @param {boolean} ifTagCasing - Whether the casing should be treated as an item tag. Defaults to false.
  *
- * Usage example: portable_base_recipe(
+ * @example:
+ * portable_base_recipe(
  *     e,
  *     'createmechanisms:portable_chute',
  *     'create:andesite_casing',
  *     false
  * )
  *
+ * @remarks:
  * - Uses createmechanisms:zinc_mechanism as the smithing template.
  * - Uses create:chute as the base item.
  * - Applies the specified casing to the base item.
@@ -343,11 +354,13 @@ function portable_base_recipe(e, output, casing, ifTagCasing) {
  * @param {Object} e - The recipe event object.
  * @param {string} inputTag - The item tag used as the input.
  *
- * Usage example: tag_saw_converter_recipe(
+ * @example:
+ * tag_saw_converter_recipe(
  *     e,
  *     'crafting:redstone_mechanism'
  * )
  *
+ * @remarks:
  * - Retrieves all items contained in the specified item tag.
  * - Creates a stonecutting recipe for each item in the tag.
  * - Uses the entire tag as the recipe input.
@@ -361,8 +374,8 @@ function tag_saw_converter_recipe(e, inputTag) {
         RemoveOutput(e, [item]);
         stonecutting(
             e,
-            itemInputTag(inputTag),
             itemOutput(item),
+            itemInputTag(inputTag),
         );
     });
 }

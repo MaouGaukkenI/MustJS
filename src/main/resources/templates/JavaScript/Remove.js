@@ -4,7 +4,8 @@
  * @param {Object} e - The recipe event object.
  * @param {Array<string>} list - Array of item identifiers used to filter recipe outputs.
  *
- * Usage example: RemoveOutput(
+ * @example:
+ * RemoveOutput(
  *     e,
  *     [
  *         "minecraft:iron_ingot",
@@ -25,7 +26,8 @@ function RemoveOutput(e, list) {
  * @param {Object} e - The recipe event object.
  * @param {Array<string>} list - Array of item identifiers used to filter recipe inputs.
  *
- * Usage example: RemoveInput(
+ * @example:
+ * RemoveInput(
  *     e,
  *     [
  *         "minecraft:iron_ore",
@@ -46,7 +48,8 @@ function RemoveInput(e, list) {
  * @param {Object} e - The recipe event object.
  * @param {Array<string>} list - Array of mod identifiers used to filter recipes.
  *
- * Usage example: RemoveMod(
+ * @example:
+ * RemoveMod(
  *     e,
  *     [
  *         "create",
@@ -67,7 +70,8 @@ function RemoveMod(e, list) {
  * @param {Object} e - The recipe event object.
  * @param {Array<string>} list - Array of recipe type identifiers used to filter recipes.
  *
- * Usage example: RemoveType(
+ * @example:
+ * RemoveType(
  *     e,
  *     [
  *         "minecraft:smelting",
@@ -88,7 +92,8 @@ function RemoveType(e, list) {
  * @param {Object} e - The recipe event object.
  * @param {Array<string>} list - Array of recipe identifiers to remove.
  *
- * Usage example: RemoveId(
+ * @example:
+ * RemoveId(
  *     e,
  *     [
  *         "minecraft:iron_ingot_from_smelting_iron_ore",
@@ -110,7 +115,8 @@ function RemoveId(e, list) {
  * @param {string} input - The item identifier to search for in recipe inputs.
  * @param {string} new_input - The new item or ingredient to use as the replacement.
  *
- * Usage example: ReplaceInput(
+ * @example:
+ * ReplaceInput(
  *     e,
  *     "minecraft:iron_ingot",
  *     "minecraft:copper_ingot"
@@ -132,7 +138,8 @@ function ReplaceInput(e, input, new_input) {
  * @param {string} output - The item identifier to search for in recipe outputs.
  * @param {string} new_output - The new item to use as the replacement.
  *
- * Usage example: ReplaceOutput(
+ * @example:
+ * ReplaceOutput(
  *     e,
  *     "minecraft:iron_ingot",
  *     "minecraft:copper_ingot"
@@ -154,7 +161,8 @@ function ReplaceOutput(e, output, new_output) {
  * @param {string} item - The item identifier to search for in recipe inputs and outputs.
  * @param {string} new_item - The new item to use as the replacement.
  *
- * Usage example: ReplaceItem(
+ * @example:
+ * ReplaceItem(
  *     e,
  *     "minecraft:iron_ingot",
  *     "minecraft:copper_ingot"
