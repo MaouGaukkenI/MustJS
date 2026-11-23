@@ -1,7 +1,5 @@
 package net.MaouGaukken.MustJS.ArquiveMananger;
 
-import java.awt.*;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
@@ -30,8 +28,7 @@ public class ModScripts {
         String resourcePath = ORIGIN_FOLDER + "/" + fileName;
         Path targetFile = baseFolder.resolve(fileName);
 
-        try (InputStream in = ModScripts.class.getClassLoader()
-                .getResourceAsStream(resourcePath)) {
+        try (InputStream in = ModScripts.class.getResourceAsStream(resourcePath)) {
 
             if (in == null) {
                 throw new IOException("Arquivo não encontrado no jar: " + resourcePath);

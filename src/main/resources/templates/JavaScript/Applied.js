@@ -6,14 +6,75 @@ const MUSTJS_RESOURCE_LOCATION_CLASS_AE2 =
 const MUSTJS_BUILT_IN_REGISTRIES_CLASS_AE2 =
     Java.loadClass("net.minecraft.core.registries.BuiltInRegistries");
 
-const MUSTJS_LOOT_TABLE_CLASS_AE2 =
-    Java.loadClass("net.minecraft.world.level.storage.loot.LootTable");
-
 const MUSTJS_REGISTRIES_CLASS_AE2 =
     Java.loadClass("net.minecraft.core.registries.Registries");
 
+
+const MUSTJS_LOOT_TABLE_CLASS_AE2 =
+    Java.loadClass("net.minecraft.world.level.storage.loot.LootTable");
+
 const MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_AE2 =
     Java.loadClass("net.neoforged.neoforge.server.ServerLifecycleHooks");
+
+var MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_AE2 = new Set();
+
+function mustjsQueueDeferredResourceValidation_AE2(type, resourceId) {
+    MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_AE2.add(type + "|" + resourceId);
+}
+
+/*
+ * Validate references after the datapack reload has finished. Recipes and
+ * loot tables are loaded in separate stages, so checking them in the recipe
+ * callback can incorrectly reject valid references.
+ */
+ServerEvents.tick(event => {
+    if (MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_AE2.size === 0) {
+        return;
+    }
+
+    var server =
+        MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_AE2.getCurrentServer();
+
+    if (server == null) {
+        return;
+    }
+
+    var pending = Array.from(MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_AE2);
+    MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_AE2.clear();
+
+    for (const entry of pending) {
+        var separator = entry.indexOf("|");
+        var type = entry.substring(0, separator);
+        var resourceId = entry.substring(separator + 1);
+        var exists = false;
+
+        try {
+            var resourceLocation =
+                MUSTJS_RESOURCE_LOCATION_CLASS_AE2.parse(resourceId);
+
+            if (type === "enchantment") {
+                exists = server.registryAccess().registryOrThrow(
+                    MUSTJS_REGISTRIES_CLASS_AE2.ENCHANTMENT
+                ).containsKey(resourceLocation);
+            } else if (type === "loot_table") {
+                exists = server.reloadableRegistries().getLootTable(
+                    resourceLocation
+                ) !== MUSTJS_LOOT_TABLE_CLASS_AE2.EMPTY;
+            }
+        } catch (error) {
+            console.error(
+                `[MustJS] Failed to validate ${type} '${resourceId}' after datapack loading: ${error}`
+            );
+            continue;
+        }
+
+        if (!exists) {
+            console.error(
+                `[MustJS] Unknown ${type} '${resourceId}' after datapack loading.`
+            );
+        }
+    }
+});
 
 /**
  * Generates a diagnostic recipe ID using the same base format as the final
@@ -353,8 +414,7 @@ function validateOutputAE2(output) {
  * @returns {boolean} True if the sound event exists; otherwise, false.
  *
  * @remarks
- * ArsManipulator.js
- * ArsNouveau.js- Uses registryExistsAE2() to validate the sound event.
+ * - Uses registryExistsAE2() to validate the sound event.
  * - Does not validate the associated sound files.
  */
 function soundEventExistsAE2(soundId) {
@@ -362,10 +422,11 @@ function soundEventExistsAE2(soundId) {
 }
 
 /**
- * Checks whether an enchantment exists in the server registry.
+ * Validates the enchantment ID syntax and queues an existence check
+ * for after the datapack reload completes.
  *
  * @param {string} enchantmentId - The enchantment resource location.
- * @returns {boolean} True if the enchantment exists; otherwise, false.
+ * @returns {boolean} True when the ID has valid resource location syntax.
  */
 function validateEnchantmentAE2(enchantmentId) {
     if (
@@ -376,28 +437,9 @@ function validateEnchantmentAE2(enchantmentId) {
     }
 
     try {
-        var resourceLocation =
-            MUSTJS_RESOURCE_LOCATION_CLASS_AE2.parse(enchantmentId);
-
-        var server =
-            MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_AE2.getCurrentServer();
-
-        if (server == null) {
-            console.error(
-                `[MustJS] Cannot validate enchantment ID '${enchantmentId}': ` +
-                "server is unavailable."
-            );
-
-            return false;
-        }
-
-        var enchantmentRegistry =
-            server.registryAccess().registryOrThrow(
-                MUSTJS_REGISTRIES_CLASS_AE2.ENCHANTMENT
-            );
-
-        return enchantmentRegistry.containsKey(resourceLocation);
-
+        MUSTJS_RESOURCE_LOCATION_CLASS_AE2.parse(enchantmentId);
+        mustjsQueueDeferredResourceValidation_AE2("enchantment", enchantmentId);
+        return true;
     } catch (error) {
         console.error(
             `[MustJS] Failed to validate enchantment ID '${enchantmentId}': ${error}`
@@ -408,10 +450,11 @@ function validateEnchantmentAE2(enchantmentId) {
 }
 
 /**
- * Checks whether a loot table exists on the current server.
+ * Validates the loot table ID syntax and queues an existence check
+ * for after the datapack reload completes.
  *
  * @param {string} lootTableId - The loot table resource location.
- * @returns {boolean} True if the loot table exists; otherwise, false.
+ * @returns {boolean} True when the ID has valid resource location syntax.
  */
 function validateLootTableAE2(lootTableId) {
     if (
@@ -422,29 +465,12 @@ function validateLootTableAE2(lootTableId) {
     }
 
     try {
-        var resourceLocation =
-            MUSTJS_RESOURCE_LOCATION_CLASS_AE2.parse(lootTableId);
-
-        var server =
-            MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_AE2.getCurrentServer();
-
-        if (server == null) {
-            console.error(
-                `[MustJS] Cannot validate loot table '${lootTableId}': ` +
-                "server is unavailable."
-            );
-
-            return false;
-        }
-
-        var lootTable =
-            server.reloadableRegistries().getLootTable(resourceLocation);
-
-        return lootTable !== MUSTJS_LOOT_TABLE_CLASS_AE2.EMPTY;
-
+        MUSTJS_RESOURCE_LOCATION_CLASS_AE2.parse(lootTableId);
+        mustjsQueueDeferredResourceValidation_AE2("loot_table", lootTableId);
+        return true;
     } catch (error) {
         console.error(
-            `[MustJS] Failed to validate loot table ID '${lootTableId}': ${error}`
+            `[MustJS] Failed to validate loot_table ID '${lootTableId}': ${error}`
         );
 
         return false;

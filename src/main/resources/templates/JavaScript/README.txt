@@ -6,7 +6,16 @@ README - Mod Usage Guide
 ------------
 The "MustJS" folder contains all required functions.
 - Use it only as a library to create your recipes.
-- DO NOT edit it directly, as it is updated multiple times during gameplay.
+- By default, MustJs is deleted and regenerated when the config loads/reloads.
+- To edit freely, set regenerateScripts = false in config/mustjs-common.toml BEFORE editing.
+- When false, no scripts or READMEs are automatically created, overwritten or removed.
+- Generate files once before disabling. Re-enabling discards edits inside MustJs.
+
+LootJS
+------
+- generateLootJS = true generates LootJS.js and LootManipulator.js in MustJs/Addons/LootJS.
+- Install LootJS to use the helpers in LootJS.lootTables and LootJS.modifiers.
+- Generation options only apply while regenerateScripts = true.
 
 🛠️ Creating New Recipes
 ------------------------

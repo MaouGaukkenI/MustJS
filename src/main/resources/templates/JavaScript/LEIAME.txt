@@ -6,7 +6,16 @@ README - Guia de Uso do Mod
 ------------
 A pasta "MustJS" contém todas as funções necessárias.
 - Use apenas como biblioteca para criar suas receitas.
-- NÃO edite diretamente, pois ela é atualizada várias vezes durante a gameplay.
+- Por padrão, a pasta MustJs é apagada e recriada ao carregar/recarregar a configuração.
+- Para editar livremente, defina regenerateScripts = false em config/mustjs-common.toml ANTES de editar.
+- Com false, nenhum script ou README é criado, sobrescrito ou removido automaticamente.
+- Gere os arquivos uma vez antes de desativar. Reativar descarta as edições na pasta MustJs.
+
+LootJS
+------
+- generateLootJS = true gera LootJS.js e LootManipulator.js em MustJs/Addons/LootJS.
+- Instale LootJS para usar os helpers em LootJS.lootTables e LootJS.modifiers.
+- As opções de geração só são aplicadas enquanto regenerateScripts = true.
 
 🛠️ Criando Novas Receitas
 --------------------------

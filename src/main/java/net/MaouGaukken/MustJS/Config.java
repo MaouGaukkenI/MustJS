@@ -5,6 +5,16 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
+    public static final ModConfigSpec.BooleanValue REGENERATE_SCRIPTS = BUILDER
+            .comment("Delete and regenerate the MustJs script folder when this config loads or reloads.",
+                    "Disable before editing scripts: false preserves all existing files and skips generation, deletion and README updates.",
+                    "Re-enabling this option discards manual edits inside MustJs.")
+            .define("regenerateScripts", true);
+
+    public static final ModConfigSpec.BooleanValue ADD_LOOT_JS = BUILDER
+            .comment("Generate LootJS.js and LootManipulator.js. Install LootJS to use these helpers.")
+            .define("generateLootJS", true);
+
     public static final ModConfigSpec.BooleanValue ADD_BASE = BUILDER
             .comment("Generate the functions for creating Create mod recipes")
             .define("generateBase", true);

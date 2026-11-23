@@ -6,14 +6,75 @@ const MUSTJS_RESOURCE_LOCATION_CLASS_CBF =
 const MUSTJS_BUILT_IN_REGISTRIES_CLASS_CBF =
     Java.loadClass("net.minecraft.core.registries.BuiltInRegistries");
 
-const MUSTJS_LOOT_TABLE_CLASS_CBF =
-    Java.loadClass("net.minecraft.world.level.storage.loot.LootTable");
-
 const MUSTJS_REGISTRIES_CLASS_CBF =
     Java.loadClass("net.minecraft.core.registries.Registries");
 
+
+const MUSTJS_LOOT_TABLE_CLASS_CBF =
+    Java.loadClass("net.minecraft.world.level.storage.loot.LootTable");
+
 const MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_CBF =
     Java.loadClass("net.neoforged.neoforge.server.ServerLifecycleHooks");
+
+var MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_CBF = new Set();
+
+function mustjsQueueDeferredResourceValidation_CBF(type, resourceId) {
+    MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_CBF.add(type + "|" + resourceId);
+}
+
+/*
+ * Validate references after the datapack reload has finished. Recipes and
+ * loot tables are loaded in separate stages, so checking them in the recipe
+ * callback can incorrectly reject valid references.
+ */
+ServerEvents.tick(event => {
+    if (MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_CBF.size === 0) {
+        return;
+    }
+
+    var server =
+        MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_CBF.getCurrentServer();
+
+    if (server == null) {
+        return;
+    }
+
+    var pending = Array.from(MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_CBF);
+    MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_CBF.clear();
+
+    for (const entry of pending) {
+        var separator = entry.indexOf("|");
+        var type = entry.substring(0, separator);
+        var resourceId = entry.substring(separator + 1);
+        var exists = false;
+
+        try {
+            var resourceLocation =
+                MUSTJS_RESOURCE_LOCATION_CLASS_CBF.parse(resourceId);
+
+            if (type === "enchantment") {
+                exists = server.registryAccess().registryOrThrow(
+                    MUSTJS_REGISTRIES_CLASS_CBF.ENCHANTMENT
+                ).containsKey(resourceLocation);
+            } else if (type === "loot_table") {
+                exists = server.reloadableRegistries().getLootTable(
+                    resourceLocation
+                ) !== MUSTJS_LOOT_TABLE_CLASS_CBF.EMPTY;
+            }
+        } catch (error) {
+            console.error(
+                `[MustJS] Failed to validate ${type} '${resourceId}' after datapack loading: ${error}`
+            );
+            continue;
+        }
+
+        if (!exists) {
+            console.error(
+                `[MustJS] Unknown ${type} '${resourceId}' after datapack loading.`
+            );
+        }
+    }
+});
 
 /**
  * Generates a diagnostic recipe ID using the same base format as the final
@@ -68,6 +129,29 @@ function mustjsDiagnosticRecipeIdCBF(recipeType, output) {
     }
 
     return recipeId;
+}
+
+/**
+ * Logs a recipe validation error prefixed with the diagnostic recipe ID.
+ *
+ * Centralizes the repeated "build diagnostic ID + console.error" pattern
+ * used by the recipe functions.
+ *
+ * @param {string} recipeType - The recipe type being processed.
+ * @param {Object|null|undefined} output - The output used to build the diagnostic ID.
+ * @param {string} message - The error message, without the [MustJS] prefix.
+ *
+ * @example
+ * mustjsReportRecipeErrorCBF(
+ *     recipeType,
+ *     output,
+ *     "Cutting: Invalid output."
+ * );
+ */
+function mustjsReportRecipeErrorCBF(recipeType, output, message) {
+    const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
+
+    console.error(`[MustJS] [${diagnosticId}] ${message}`);
 }
 
 /**
@@ -361,10 +445,11 @@ function soundEventExistsCBF(soundId) {
 }
 
 /**
- * Checks whether an enchantment exists in the server registry.
+ * Validates the enchantment ID syntax and queues an existence check
+ * for after the datapack reload completes.
  *
  * @param {string} enchantmentId - The enchantment resource location.
- * @returns {boolean} True if the enchantment exists; otherwise, false.
+ * @returns {boolean} True when the ID has valid resource location syntax.
  */
 function validateEnchantmentCBF(enchantmentId) {
     if (
@@ -375,28 +460,9 @@ function validateEnchantmentCBF(enchantmentId) {
     }
 
     try {
-        var resourceLocation =
-            MUSTJS_RESOURCE_LOCATION_CLASS_CBF.parse(enchantmentId);
-
-        var server =
-            MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_CBF.getCurrentServer();
-
-        if (server == null) {
-            console.error(
-                `[MustJS] Cannot validate enchantment ID '${enchantmentId}': ` +
-                "server is unavailable."
-            );
-
-            return false;
-        }
-
-        var enchantmentRegistry =
-            server.registryAccess().registryOrThrow(
-                MUSTJS_REGISTRIES_CLASS_CBF.ENCHANTMENT
-            );
-
-        return enchantmentRegistry.containsKey(resourceLocation);
-
+        MUSTJS_RESOURCE_LOCATION_CLASS_CBF.parse(enchantmentId);
+        mustjsQueueDeferredResourceValidation_CBF("enchantment", enchantmentId);
+        return true;
     } catch (error) {
         console.error(
             `[MustJS] Failed to validate enchantment ID '${enchantmentId}': ${error}`
@@ -407,10 +473,11 @@ function validateEnchantmentCBF(enchantmentId) {
 }
 
 /**
- * Checks whether a loot table exists on the current server.
+ * Validates the loot table ID syntax and queues an existence check
+ * for after the datapack reload completes.
  *
  * @param {string} lootTableId - The loot table resource location.
- * @returns {boolean} True if the loot table exists; otherwise, false.
+ * @returns {boolean} True when the ID has valid resource location syntax.
  */
 function validateLootTableCBF(lootTableId) {
     if (
@@ -421,29 +488,12 @@ function validateLootTableCBF(lootTableId) {
     }
 
     try {
-        var resourceLocation =
-            MUSTJS_RESOURCE_LOCATION_CLASS_CBF.parse(lootTableId);
-
-        var server =
-            MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_CBF.getCurrentServer();
-
-        if (server == null) {
-            console.error(
-                `[MustJS] Cannot validate loot table '${lootTableId}': ` +
-                "server is unavailable."
-            );
-
-            return false;
-        }
-
-        var lootTable =
-            server.reloadableRegistries().getLootTable(resourceLocation);
-
-        return lootTable !== MUSTJS_LOOT_TABLE_CLASS_CBF.EMPTY;
-
+        MUSTJS_RESOURCE_LOCATION_CLASS_CBF.parse(lootTableId);
+        mustjsQueueDeferredResourceValidation_CBF("loot_table", lootTableId);
+        return true;
     } catch (error) {
         console.error(
-            `[MustJS] Failed to validate loot table ID '${lootTableId}': ${error}`
+            `[MustJS] Failed to validate loot_table ID '${lootTableId}': ${error}`
         );
 
         return false;
@@ -543,30 +593,30 @@ function compacting(e, output, inputs, heat) {
     let error = false
 
     if (!validateOutputCBF(output)) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Compacting: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Compacting: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         error = true;
     }
 
     if (!Array.isArray(inputs) || inputs.length === 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Compacting: Invalid inputs. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Compacting: Invalid inputs. ` +
             "Expected a non-empty array of item, item tag, or fluid inputs."
         );
         error = true;
     } else {
         for (let i = 0; i < inputs.length; i++) {
             if (!validateInputCBF(inputs[i])) {
-                const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-                console.error(
-                    `[MustJS] [${diagnosticId}] Compacting: Invalid input at index ${i}. ` +
+                mustjsReportRecipeErrorCBF(
+                    recipeType,
+                    output,
+                    `Compacting: Invalid input at index ${i}. ` +
                     "Expected a valid item, item tag, or fluid input."
                 );
                 error = true;
@@ -575,10 +625,10 @@ function compacting(e, output, inputs, heat) {
     }
 
     if (!states.includes(heat)) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Compacting: Invalid heat requirement '${heat}'. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Compacting: Invalid heat requirement '${heat}'. ` +
             'Allowed values are false, "heated", or "superheated".'
         );
         error = true;
@@ -632,10 +682,10 @@ function crushing(e, output, input, time) {
     let error = false;
 
     if (!Array.isArray(output) || output.length === 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Crushing: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Crushing: Invalid output. ` +
             "Expected a non-empty array of valid item outputs."
         );
         error = true;
@@ -644,10 +694,10 @@ function crushing(e, output, input, time) {
     for (let i = 0; i < output.length; i++) {
         if (!validateOutputCBF(output[i]) ||
             Object.prototype.hasOwnProperty.call(output[i], "amount")) {
-            const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output[i]);
-
-            console.error(
-                `[MustJS] [${diagnosticId}] Crushing: Invalid output at index ${i}. ` +
+            mustjsReportRecipeErrorCBF(
+                recipeType,
+                output[i],
+                `Crushing: Invalid output at index ${i}. ` +
                 "Expected a valid item output created with an item output helper."
             );
             error = true;
@@ -655,20 +705,20 @@ function crushing(e, output, input, time) {
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Crushing: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output[0],
+            `Crushing: Invalid input. ` +
             "Expected a valid item or item tag input created with itemInput() or itemInputTag()."
         );
         error = true;
     }
 
     if (typeof time !== "number" || !Number.isFinite(time) || time <= 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Crushing: Invalid processing time '${time}'. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output[0],
+            `Crushing: Invalid processing time '${time}'. ` +
             "Expected a positive, finite number of ticks."
         );
         error = true;
@@ -715,30 +765,30 @@ function cutting(e, output, input, time) {
     let error = false;
 
     if (!validateOutputCBF(output) || Object.prototype.hasOwnProperty.call(output, "amount")) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Cutting: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Cutting: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         error = true;
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Cutting: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Cutting: Invalid input. ` +
             "Expected a valid item or item tag input created with itemInput() or itemInputTag()."
         );
         error = true;
     }
 
     if (typeof time !== "number" || !Number.isFinite(time) || time <= 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Cutting: Invalid processing time '${time}'. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Cutting: Invalid processing time '${time}'. ` +
             "Expected a positive, finite number of ticks."
         );
         error = true;
@@ -789,40 +839,40 @@ function deploying(e, output, base, held, keep) {
     let error = false;
 
     if (!validateOutputCBF(output) || Object.prototype.hasOwnProperty.call(output, "amount")) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Deploying: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Deploying: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         error = true;
     }
 
     if (!validateInputCBF(held) || typeof held.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Deploying: Invalid held item. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Deploying: Invalid held item. ` +
             "Expected a valid item or item tag input created with itemInput() or itemInputTag()."
         );
         error = true;
     }
 
     if (!validateInputCBF(base) || typeof base.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Deploying: Invalid base item. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Deploying: Invalid base item. ` +
             "Expected a valid item or item tag input created with itemInput() or itemInputTag()."
         );
         error = true;
     }
 
     if (typeof keep !== "boolean") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Deploying: Invalid keep value '${keep}'. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Deploying: Invalid keep value '${keep}'. ` +
             "Expected a boolean (true or false)."
         );
         error = true;
@@ -873,10 +923,10 @@ function emptying(e, output_item, output_fluid, input) {
         !validateOutputCBF(output_item) ||
         Object.prototype.hasOwnProperty.call(output_item, "amount")
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output_item);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Emptying: Invalid output_item. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output_item,
+            `Emptying: Invalid output_item. ` +
             "Expected a valid item output created with an item output helper."
         );
         error = true;
@@ -886,20 +936,20 @@ function emptying(e, output_item, output_fluid, input) {
         !validateOutputCBF(output_fluid) ||
         !Object.prototype.hasOwnProperty.call(output_fluid, "amount")
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output_item);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Emptying: Invalid output_fluid. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output_item,
+            `Emptying: Invalid output_fluid. ` +
             "Expected a valid fluid output created with fluidOutput()."
         );
         error = true;
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output_item);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Emptying: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output_item,
+            `Emptying: Invalid input. ` +
             "Expected a valid item or item tag input created with itemInput() or itemInputTag()."
         );
         error = true;
@@ -949,30 +999,30 @@ function filling(e, output, input, fluid) {
         !validateOutputCBF(output) ||
         Object.prototype.hasOwnProperty.call(output, "amount")
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Filling: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Filling: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         error = true;
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Filling: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Filling: Invalid input. ` +
             "Expected a valid item or item tag input created with itemInput() or itemInputTag()."
         );
         error = true;
     }
 
     if (!validateInputCBF(fluid) || typeof fluid.fluid !== "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Filling: Invalid fluid. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Filling: Invalid fluid. ` +
             "Expected a valid fluid input created with fluidInput()."
         );
         error = true;
@@ -1020,10 +1070,10 @@ function haunting(e, output, input) {
     let error = false;
 
     if (!Array.isArray(output) || output.length === 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Haunting: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Haunting: Invalid output. ` +
             "Expected a non-empty array of valid item outputs."
         );
         error = true;
@@ -1034,10 +1084,10 @@ function haunting(e, output, input) {
             !validateOutputCBF(output[i]) ||
             Object.prototype.hasOwnProperty.call(output[i], "amount")
         ) {
-            const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output[i]);
-
-            console.error(
-                `[MustJS] [${diagnosticId}] Haunting: Invalid output at index ${i}. ` +
+            mustjsReportRecipeErrorCBF(
+                recipeType,
+                output[i],
+                `Haunting: Invalid output at index ${i}. ` +
                 "Expected a valid item output created with an item output helper."
             );
             error = true;
@@ -1045,10 +1095,10 @@ function haunting(e, output, input) {
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Haunting: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output[0],
+            `Haunting: Invalid input. ` +
             "Expected a valid item or item tag input created with itemInput() or itemInputTag()."
         );
         error = true;
@@ -1101,30 +1151,30 @@ function item_application(e, output, input_block, input_item) {
         !validateOutputCBF(output) ||
         Object.prototype.hasOwnProperty.call(output, "amount")
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Item_application: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Item_application: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         error = true;
     }
 
     if (!validateInputCBF(input_block) || typeof input_block.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Item_application: Invalid input_block. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Item_application: Invalid input_block. ` +
             "Expected a valid item or item tag input created with itemInput() or itemInputTag()."
         );
         error = true;
     }
 
     if (!validateInputCBF(input_item) || typeof input_item.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Item_application: Invalid input_item. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Item_application: Invalid input_item. ` +
             "Expected a valid item or item tag input created with itemInput() or itemInputTag()."
         );
         error = true;
@@ -1178,12 +1228,13 @@ function item_application(e, output, input_block, input_item) {
  */
 function mechanical_crafting(e, output, input, pattern) {
     const recipeType = "mechanical_crafting";
-    const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
     let error = false;
 
     if (!validateOutputCBF(output)) {
-        console.error(
-            `[MustJS] [${diagnosticId}] Mechanical_crafting: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Mechanical_crafting: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         error = true;
@@ -1197,8 +1248,10 @@ function mechanical_crafting(e, output, input, pattern) {
         !Number.isSafeInteger(output.count) ||
         output.count <= 0
     ) {
-        console.error(
-            `[MustJS] [${diagnosticId}] Mechanical_crafting: Invalid output count. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Mechanical_crafting: Invalid output count. ` +
             "Expected a positive safe integer."
         );
         error = true;
@@ -1210,8 +1263,10 @@ function mechanical_crafting(e, output, input, pattern) {
         Array.isArray(input) ||
         Object.keys(input).length === 0
     ) {
-        console.error(
-            `[MustJS] [${diagnosticId}] Mechanical_crafting: Invalid input mapping. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Mechanical_crafting: Invalid input mapping. ` +
             "Expected a non-empty object created with itemInputKey() or itemInputTagKey()."
         );
         error = true;
@@ -1232,8 +1287,10 @@ function mechanical_crafting(e, output, input, pattern) {
                 !Object.prototype.hasOwnProperty.call(inputValue, "tag")
             )
         ) {
-            console.error(
-                `[MustJS] [${diagnosticId}] Mechanical_crafting: Invalid input mapping ` +
+            mustjsReportRecipeErrorCBF(
+                recipeType,
+                output,
+                `Mechanical_crafting: Invalid input mapping ` +
                 `for symbol '${inputKey}'. Expected an item or item tag input.`
             );
             error = true;
@@ -1243,8 +1300,10 @@ function mechanical_crafting(e, output, input, pattern) {
             !validateInputCBF(inputValue) ||
             typeof inputValue.fluid === "string"
         ) {
-            console.error(
-                `[MustJS] [${diagnosticId}] Mechanical_crafting: Invalid input mapping ` +
+            mustjsReportRecipeErrorCBF(
+                recipeType,
+                output,
+                `Mechanical_crafting: Invalid input mapping ` +
                 `for symbol '${inputKey}'. The item or item tag does not exist or is invalid.`
             );
             error = true;
@@ -1255,8 +1314,10 @@ function mechanical_crafting(e, output, input, pattern) {
         !Array.isArray(pattern) ||
         pattern.length === 0
     ) {
-        console.error(
-            `[MustJS] [${diagnosticId}] Mechanical_crafting: Invalid pattern. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Mechanical_crafting: Invalid pattern. ` +
             "Expected a non-empty array of strings."
         );
         error = true;
@@ -1265,8 +1326,10 @@ function mechanical_crafting(e, output, input, pattern) {
     if (
         !pattern.every(row => typeof row === "string" && row.length > 0)
     ) {
-        console.error(
-            `[MustJS] [${diagnosticId}] Mechanical_crafting: Invalid pattern. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Mechanical_crafting: Invalid pattern. ` +
             "Each row must be a non-empty string."
         );
         error = true;
@@ -1276,8 +1339,10 @@ function mechanical_crafting(e, output, input, pattern) {
 
     for (const symbol of symbolsInPattern) {
         if (!Object.prototype.hasOwnProperty.call(input, symbol)) {
-            console.error(
-                `[MustJS] [${diagnosticId}] Mechanical_crafting: Invalid pattern. ` +
+            mustjsReportRecipeErrorCBF(
+                recipeType,
+                output,
+                `Mechanical_crafting: Invalid pattern. ` +
                 `Symbol '${symbol}' is not defined in the input mapping.`
             );
             error = true;
@@ -1335,10 +1400,10 @@ function milling(e, output, input, time) {
     let error = false;
 
     if (!Array.isArray(results) || results.length === 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Milling: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Milling: Invalid output. ` +
             "Expected a valid item output or a non-empty array of item outputs."
         );
         error = true;
@@ -1349,10 +1414,10 @@ function milling(e, output, input, time) {
             !validateOutputCBF(results[i]) ||
             Object.prototype.hasOwnProperty.call(results[i], "amount")
         ) {
-            const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[i]);
-
-            console.error(
-                `[MustJS] [${diagnosticId}] Milling: Invalid output at index ${i}. ` +
+            mustjsReportRecipeErrorCBF(
+                recipeType,
+                results[i],
+                `Milling: Invalid output at index ${i}. ` +
                 "Expected a valid item output created with an item output helper."
             );
             error = true;
@@ -1360,10 +1425,10 @@ function milling(e, output, input, time) {
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Milling: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            results[0],
+            `Milling: Invalid input. ` +
             "Expected a valid item or item tag input created with itemInput() or itemInputTag()."
         );
         error = true;
@@ -1374,10 +1439,10 @@ function milling(e, output, input, time) {
         !Number.isFinite(time) ||
         time <= 0
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Milling: Invalid processing time '${time}'. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            results[0],
+            `Milling: Invalid processing time '${time}'. ` +
             "Expected a positive, finite number of ticks."
         );
         error = true;
@@ -1438,10 +1503,10 @@ function mixing(e, output, input, heat) {
     const results = Array.isArray(output) ? output : [output];
 
     if (results.length === 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, null);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Mixing: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            null,
+            `Mixing: Invalid output. ` +
             "Expected a non-empty array of valid item or fluid outputs."
         );
         error = true;
@@ -1454,13 +1519,10 @@ function mixing(e, output, input, heat) {
         const result = results[i];
 
         if (!validateOutputCBF(result)) {
-            const diagnosticId = mustjsDiagnosticRecipeIdCBF(
+            mustjsReportRecipeErrorCBF(
                 recipeType,
-                result
-            );
-
-            console.error(
-                `[MustJS] [${diagnosticId}] Mixing: Invalid output at index ${i}. ` +
+                result,
+                `Mixing: Invalid output at index ${i}. ` +
                 "Expected a valid item or fluid output."
             );
             error = true;
@@ -1483,13 +1545,10 @@ function mixing(e, output, input, heat) {
                     !Number.isSafeInteger(result.count) ||
                     result.count <= 0
                 ) {
-                    const diagnosticId = mustjsDiagnosticRecipeIdCBF(
+                    mustjsReportRecipeErrorCBF(
                         recipeType,
-                        result
-                    );
-
-                    console.error(
-                        `[MustJS] [${diagnosticId}] Mixing: Invalid output count ` +
+                        result,
+                        `Mixing: Invalid output count ` +
                         `at index ${i}. Expected a positive safe integer.`
                     );
                     error = true;
@@ -1505,13 +1564,10 @@ function mixing(e, output, input, heat) {
                     result.chance < 0 ||
                     result.chance > 1
                 ) {
-                    const diagnosticId = mustjsDiagnosticRecipeIdCBF(
+                    mustjsReportRecipeErrorCBF(
                         recipeType,
-                        result
-                    );
-
-                    console.error(
-                        `[MustJS] [${diagnosticId}] Mixing: Invalid output chance ` +
+                        result,
+                        `Mixing: Invalid output chance ` +
                         `at index ${i}. Expected a number between 0 and 1.`
                     );
                     error = true;
@@ -1526,13 +1582,10 @@ function mixing(e, output, input, heat) {
 
     // Validate inputs.
     if (!Array.isArray(input) || input.length === 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(
+        mustjsReportRecipeErrorCBF(
             recipeType,
-            results[0]
-        );
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Mixing: Invalid inputs. ` +
+            results[0],
+            `Mixing: Invalid inputs. ` +
             "Expected a non-empty array of item, item tag, or fluid inputs."
         );
         error = true;
@@ -1540,13 +1593,10 @@ function mixing(e, output, input, heat) {
 
     for (let i = 0; i < input.length; i++) {
         if (!validateInputCBF(input[i])) {
-            const diagnosticId = mustjsDiagnosticRecipeIdCBF(
+            mustjsReportRecipeErrorCBF(
                 recipeType,
-                results[0]
-            );
-
-            console.error(
-                `[MustJS] [${diagnosticId}] Mixing: Invalid input at index ${i}. ` +
+                results[0],
+                `Mixing: Invalid input at index ${i}. ` +
                 "Expected a valid item, item tag, or fluid input."
             );
             error = true;
@@ -1555,13 +1605,10 @@ function mixing(e, output, input, heat) {
 
     // Validate heat requirement.
     if (!states.includes(heat)) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(
+        mustjsReportRecipeErrorCBF(
             recipeType,
-            results[0]
-        );
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Mixing: Invalid heat requirement '${heat}'. ` +
+            results[0],
+            `Mixing: Invalid heat requirement '${heat}'. ` +
             'Allowed values are false, "heated", or "superheated".'
         );
         error = true;
@@ -1615,20 +1662,20 @@ function pressing(e, output, input) {
         !validateOutputCBF(output) ||
         Object.prototype.hasOwnProperty.call(output, "amount")
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Pressing: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Pressing: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         error = true;
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Pressing: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Pressing: Invalid input. ` +
             "Expected a valid item or item tag input."
         );
         error = true;
@@ -1675,20 +1722,20 @@ function polishing(e, output, input) {
         !validateOutputCBF(output) ||
         Object.prototype.hasOwnProperty.call(output, "amount")
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Polishing: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Polishing: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         error = true;
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Polishing: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Polishing: Invalid input. ` +
             "Expected a valid item or item tag input."
         );
         error = true;
@@ -1734,10 +1781,10 @@ function splashing(e, output, input) {
     let error = false;
 
     if (!Array.isArray(results) || results.length === 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Splashing: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            results[0],
+            `Splashing: Invalid output. ` +
             "Expected a non-empty array of valid item outputs."
         );
         error = true;
@@ -1748,10 +1795,10 @@ function splashing(e, output, input) {
             !validateOutputCBF(results[i]) ||
             Object.prototype.hasOwnProperty.call(results[i], "amount")
         ) {
-            const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[i]);
-
-            console.error(
-                `[MustJS] [${diagnosticId}] Splashing: Invalid output at index ${i}. ` +
+            mustjsReportRecipeErrorCBF(
+                recipeType,
+                results[i],
+                `Splashing: Invalid output at index ${i}. ` +
                 "Expected a valid item output created with an item output helper."
             );
             error = true;
@@ -1759,10 +1806,10 @@ function splashing(e, output, input) {
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Splashing: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            results[0],
+            `Splashing: Invalid input. ` +
             "Expected a valid item or item tag input."
         );
         error = true;
@@ -1826,10 +1873,10 @@ function sequenced_assembly(e, output, input, transitional, loops, processing) {
     let error = false;
 
     if (!Array.isArray(results) || results.length === 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            results[0],
+            `Sequenced Assembly: Invalid output. ` +
             "Expected a non-empty array of valid item outputs."
         );
         error = true;
@@ -1840,10 +1887,10 @@ function sequenced_assembly(e, output, input, transitional, loops, processing) {
             !validateOutputCBF(results[i]) ||
             Object.prototype.hasOwnProperty.call(results[i], "amount")
         ) {
-            const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[i]);
-
-            console.error(
-                `[MustJS] [${diagnosticId}] Sequenced Assembly: Invalid output at index ${i}. ` +
+            mustjsReportRecipeErrorCBF(
+                recipeType,
+                results[i],
+                `Sequenced Assembly: Invalid output at index ${i}. ` +
                 "Expected a valid item output created with an item output helper."
             );
             error = true;
@@ -1851,10 +1898,10 @@ function sequenced_assembly(e, output, input, transitional, loops, processing) {
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            results[0],
+            `Sequenced Assembly: Invalid input. ` +
             "Expected a valid item or item tag input."
         );
         error = true;
@@ -1864,30 +1911,30 @@ function sequenced_assembly(e, output, input, transitional, loops, processing) {
         !validateOutputCBF(transitional) ||
         Object.prototype.hasOwnProperty.call(transitional, "amount")
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly: Invalid transitional item. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            results[0],
+            `Sequenced Assembly: Invalid transitional item. ` +
             "Expected a valid item output created with an item output helper."
         );
         error = true;
     }
 
     if (typeof loops !== "number" || !Number.isFinite(loops) || loops <= 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly: Invalid loops value '${loops}'. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            results[0],
+            `Sequenced Assembly: Invalid loops value '${loops}'. ` +
             "Expected a positive finite number."
         );
         error = true;
     }
 
     if (!Array.isArray(processing) || processing.length === 0) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[0]);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly: Invalid processing steps. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            results[0],
+            `Sequenced Assembly: Invalid processing steps. ` +
             "Expected a non-empty array of valid step objects (cuttingS, deployingS, pressingS, fillingS)."
         );
         error = true;
@@ -1899,10 +1946,10 @@ function sequenced_assembly(e, output, input, transitional, loops, processing) {
             processing[i] === null ||
             Array.isArray(processing[i])
         ) {
-            const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, results[0]);
-
-            console.error(
-                `[MustJS] [${diagnosticId}] Sequenced Assembly: Invalid processing step at index ${i}. ` +
+            mustjsReportRecipeErrorCBF(
+                recipeType,
+                results[0],
+                `Sequenced Assembly: Invalid processing step at index ${i}. ` +
                 "Expected a valid step object (cuttingS, deployingS, pressingS, fillingS)."
             );
             error = true;
@@ -1943,20 +1990,20 @@ function cuttingS(output, input, time) {
         !validateOutputCBF(output) ||
         Object.prototype.hasOwnProperty.call(output, "amount")
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - cuttingS: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - cuttingS: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         return null;
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - cuttingS: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - cuttingS: Invalid input. ` +
             "Expected a valid item or item tag input."
         );
         return null;
@@ -1967,10 +2014,10 @@ function cuttingS(output, input, time) {
         !Number.isFinite(time) ||
         time <= 0
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - cuttingS: Invalid processing time '${time}'. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - cuttingS: Invalid processing time '${time}'. ` +
             "Expected a positive finite number of ticks."
         );
         return null;
@@ -2000,40 +2047,40 @@ function deployingS(output, base, held, keep) {
         !validateOutputCBF(output) ||
         Object.prototype.hasOwnProperty.call(output, "amount")
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - deployingS: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - deployingS: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         return null;
     }
 
     if (!validateInputCBF(base) || typeof base.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - deployingS: Invalid base input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - deployingS: Invalid base input. ` +
             "Expected a valid item or item tag input."
         );
         return null;
     }
 
     if (!validateInputCBF(held) || typeof held.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - deployingS: Invalid held input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - deployingS: Invalid held input. ` +
             "Expected a valid item or item tag input."
         );
         return null;
     }
 
     if (typeof keep !== "boolean") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - deployingS: Invalid keep value '${keep}'. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - deployingS: Invalid keep value '${keep}'. ` +
             "Expected a boolean (true or false)."
         );
         return null;
@@ -2062,20 +2109,20 @@ function fillingS(output, input, fluid) {
         !validateOutputCBF(output) ||
         Object.prototype.hasOwnProperty.call(output, "amount")
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - fillingS: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - fillingS: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         return null;
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - fillingS: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - fillingS: Invalid input. ` +
             "Expected a valid item or item tag input."
         );
         return null;
@@ -2088,10 +2135,10 @@ function fillingS(output, input, fluid) {
         !Number.isFinite(fluid.amount) ||
         fluid.amount <= 0
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - fillingS: Invalid fluid. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - fillingS: Invalid fluid. ` +
             "Expected a valid fluid input created with fluidInput(), with a valid fluid ID and a positive finite amount."
         );
         return null;
@@ -2118,20 +2165,20 @@ function pressingS(output, input) {
         !validateOutputCBF(output) ||
         Object.prototype.hasOwnProperty.call(output, "amount")
     ) {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - pressingS: Invalid output. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - pressingS: Invalid output. ` +
             "Expected a valid item output created with an item output helper."
         );
         return null;
     }
 
     if (!validateInputCBF(input) || typeof input.fluid === "string") {
-        const diagnosticId = mustjsDiagnosticRecipeIdCBF(recipeType, output);
-
-        console.error(
-            `[MustJS] [${diagnosticId}] Sequenced Assembly - pressingS: Invalid input. ` +
+        mustjsReportRecipeErrorCBF(
+            recipeType,
+            output,
+            `Sequenced Assembly - pressingS: Invalid input. ` +
             "Expected a valid item or item tag input."
         );
         return null;

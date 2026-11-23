@@ -16,16 +16,26 @@ public class MustJS {
     public static final String MOD_ID = "mustjs";
     private static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 
-    public MustJS(IEventBus modEventBus, ModContainer modContainer) throws IOException {
+    public MustJS(IEventBus modEventBus, ModContainer modContainer) {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
 
-        ModScripts.deleteMustJsFolder();
         // registra listener para quando a config for carregada
         modEventBus.addListener(this::onLoadConfig);
     }
 
     private void onLoadConfig(final ModConfigEvent event) {
-        if (event.getConfig().getSpec() == Config.SPEC) {
+        if (event.getConfig().getSpec() == Config.SPEC
+                && (event instanceof ModConfigEvent.Loading || event instanceof ModConfigEvent.Reloading)) {
+            if (!Config.REGENERATE_SCRIPTS.get()) {
+                LOGGER.info("Atualização automática desativada; arquivos MustJS preservados.");
+                return;
+            }
+            try {
+                ModScripts.deleteMustJsFolder();
+            } catch (IOException e) {
+                LOGGER.error("Erro ao limpar a pasta MustJs; atualização cancelada", e);
+                return;
+            }
             try {
                 ModScripts.createReadme("README.txt");
                 ModScripts.createReadme("LEIAME.txt");
@@ -39,6 +49,8 @@ public class MustJS {
             syncScript("AE2", Config.ADD_APPLIED.get(), "Applied.js");
             syncScript("Ars", Config.ADD_ARS_NOUVEAU.get(), "ArsNouveau.js");
             syncScript("Ars", Config.ADD_ARS_NOUVEAU.get(), "ArsManipulator.js");
+            syncScript("LootJS", Config.ADD_LOOT_JS.get(), "LootJS.js");
+            syncScript("LootJS", Config.ADD_LOOT_JS.get(), "LootManipulator.js");
             syncScript(null, Config.ADD_FLUID_MANIPULATOR.get(), "FluidManipulator.js");
             syncScript(null, Config.ADD_ITEM_MANIPULATOR.get(), "ItemManipulator.js");
             syncScript(null, Config.ADD_MINECRAFT.get(), "Minecraft.js");
@@ -53,7 +65,7 @@ public class MustJS {
                     LOGGER.info("Script {}/{} copiado com sucesso!", folder, script);
                 } else {
                     ModScripts.copyScript(script);
-                    LOGGER.info("Script {}/{} copiado com sucesso!", script);
+                    LOGGER.info("Script {} copiado com sucesso!", script);
                 }
             } else {
                 ModScripts.deleteScript(folder, script);

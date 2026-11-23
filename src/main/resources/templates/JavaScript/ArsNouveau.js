@@ -6,14 +6,75 @@ const MUSTJS_RESOURCE_LOCATION_CLASS_ArsN =
 const MUSTJS_BUILT_IN_REGISTRIES_CLASS_ArsN =
     Java.loadClass("net.minecraft.core.registries.BuiltInRegistries");
 
-const MUSTJS_LOOT_TABLE_CLASS_ArsN =
-    Java.loadClass("net.minecraft.world.level.storage.loot.LootTable");
-
 const MUSTJS_REGISTRIES_CLASS_ArsN =
     Java.loadClass("net.minecraft.core.registries.Registries");
 
+
+const MUSTJS_LOOT_TABLE_CLASS_ArsN =
+    Java.loadClass("net.minecraft.world.level.storage.loot.LootTable");
+
 const MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_ArsN =
     Java.loadClass("net.neoforged.neoforge.server.ServerLifecycleHooks");
+
+var MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_ArsN = new Set();
+
+function mustjsQueueDeferredResourceValidation_ArsN(type, resourceId) {
+    MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_ArsN.add(type + "|" + resourceId);
+}
+
+/*
+ * Validate references after the datapack reload has finished. Recipes and
+ * loot tables are loaded in separate stages, so checking them in the recipe
+ * callback can incorrectly reject valid references.
+ */
+ServerEvents.tick(event => {
+    if (MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_ArsN.size === 0) {
+        return;
+    }
+
+    var server =
+        MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_ArsN.getCurrentServer();
+
+    if (server == null) {
+        return;
+    }
+
+    var pending = Array.from(MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_ArsN);
+    MUSTJS_DEFERRED_RESOURCE_VALIDATIONS_ArsN.clear();
+
+    for (const entry of pending) {
+        var separator = entry.indexOf("|");
+        var type = entry.substring(0, separator);
+        var resourceId = entry.substring(separator + 1);
+        var exists = false;
+
+        try {
+            var resourceLocation =
+                MUSTJS_RESOURCE_LOCATION_CLASS_ArsN.parse(resourceId);
+
+            if (type === "enchantment") {
+                exists = server.registryAccess().registryOrThrow(
+                    MUSTJS_REGISTRIES_CLASS_ArsN.ENCHANTMENT
+                ).containsKey(resourceLocation);
+            } else if (type === "loot_table") {
+                exists = server.reloadableRegistries().getLootTable(
+                    resourceLocation
+                ) !== MUSTJS_LOOT_TABLE_CLASS_ArsN.EMPTY;
+            }
+        } catch (error) {
+            console.error(
+                `[MustJS] Failed to validate ${type} '${resourceId}' after datapack loading: ${error}`
+            );
+            continue;
+        }
+
+        if (!exists) {
+            console.error(
+                `[MustJS] Unknown ${type} '${resourceId}' after datapack loading.`
+            );
+        }
+    }
+});
 
 /**
  * Generates a diagnostic recipe ID using the same base format as the final
@@ -361,10 +422,11 @@ function soundEventExistsArsN(soundId) {
 }
 
 /**
- * Checks whether an enchantment exists in the server registry.
+ * Validates the enchantment ID syntax and queues an existence check
+ * for after the datapack reload completes.
  *
  * @param {string} enchantmentId - The enchantment resource location.
- * @returns {boolean} True if the enchantment exists; otherwise, false.
+ * @returns {boolean} True when the ID has valid resource location syntax.
  */
 function validateEnchantmentArsN(enchantmentId) {
     if (
@@ -375,28 +437,9 @@ function validateEnchantmentArsN(enchantmentId) {
     }
 
     try {
-        var resourceLocation =
-            MUSTJS_RESOURCE_LOCATION_CLASS_ArsN.parse(enchantmentId);
-
-        var server =
-            MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_ArsN.getCurrentServer();
-
-        if (server == null) {
-            console.error(
-                `[MustJS] Cannot validate enchantment ID '${enchantmentId}': ` +
-                "server is unavailable."
-            );
-
-            return false;
-        }
-
-        var enchantmentRegistry =
-            server.registryAccess().registryOrThrow(
-                MUSTJS_REGISTRIES_CLASS_ArsN.ENCHANTMENT
-            );
-
-        return enchantmentRegistry.containsKey(resourceLocation);
-
+        MUSTJS_RESOURCE_LOCATION_CLASS_ArsN.parse(enchantmentId);
+        mustjsQueueDeferredResourceValidation_ArsN("enchantment", enchantmentId);
+        return true;
     } catch (error) {
         console.error(
             `[MustJS] Failed to validate enchantment ID '${enchantmentId}': ${error}`
@@ -407,10 +450,11 @@ function validateEnchantmentArsN(enchantmentId) {
 }
 
 /**
- * Checks whether a loot table exists on the current server.
+ * Validates the loot table ID syntax and queues an existence check
+ * for after the datapack reload completes.
  *
  * @param {string} lootTableId - The loot table resource location.
- * @returns {boolean} True if the loot table exists; otherwise, false.
+ * @returns {boolean} True when the ID has valid resource location syntax.
  */
 function validateLootTableArsN(lootTableId) {
     if (
@@ -421,29 +465,12 @@ function validateLootTableArsN(lootTableId) {
     }
 
     try {
-        var resourceLocation =
-            MUSTJS_RESOURCE_LOCATION_CLASS_ArsN.parse(lootTableId);
-
-        var server =
-            MUSTJS_SERVER_LIFECYCLE_HOOKS_CLASS_ArsN.getCurrentServer();
-
-        if (server == null) {
-            console.error(
-                `[MustJS] Cannot validate loot table '${lootTableId}': ` +
-                "server is unavailable."
-            );
-
-            return false;
-        }
-
-        var lootTable =
-            server.reloadableRegistries().getLootTable(resourceLocation);
-
-        return lootTable !== MUSTJS_LOOT_TABLE_CLASS_ArsN.EMPTY;
-
+        MUSTJS_RESOURCE_LOCATION_CLASS_ArsN.parse(lootTableId);
+        mustjsQueueDeferredResourceValidation_ArsN("loot_table", lootTableId);
+        return true;
     } catch (error) {
         console.error(
-            `[MustJS] Failed to validate loot table ID '${lootTableId}': ${error}`
+            `[MustJS] Failed to validate loot_table ID '${lootTableId}': ${error}`
         );
 
         return false;
@@ -497,6 +524,7 @@ function mustjsGetObjectIdArsN(object) {
 
     return "unknown";
 }
+
 // === Recipe generation helper functions ===
 /**
  * Creates a recipe for the Ars Nouveau Enchanting Apparatus.
@@ -1018,9 +1046,9 @@ function ars_enchant(e, enchantment, level, input, sourceCost) {
         !validateEnchantmentArsN(enchantmentId)
     ) {
         console.error(
-            `[MustJS] [${diagnosticId}] Ars Enchant: Invalid enchantment. \n` +
-            `Enchantment ID: ${mustjsGetObjectIdArsN(enchantment)}\n`+
-            "Expected a valid enchantment ID or an object containing a valid ID."
+            `[MustJS] [${diagnosticId}] Ars Enchant: Invalid enchantment. Enchantment ID: ${mustjsGetObjectIdArsN(enchantment)}.\n`+
+            "Suggestion: verify that the enchantment ID is a valid resource location. " +
+            "Registry existence is checked after the datapack reload completes."
         );
         error = true;
     }
@@ -1078,14 +1106,15 @@ function ars_enchant(e, enchantment, level, input, sourceCost) {
     }
 
     // Remove existing enchantment recipe
-    e.remove({
-        id: enchantmentId,
-        type: "ars_nouveau:enchantment"
-    });
+    enchantmentId = enchantmentId.split(":").pop();
+    const recipeRemove = `ars_nouveau:${enchantmentId}_${level}`;
+    RemoveId(e, [recipeRemove]);
 
-    const recipeBase = `mustjs:${recipeType}/${enchantment.replace(":", "_")}`;
+    // Recipe ID
+    const recipeBase = `mustjs:${recipeType}/${enchantment.replace(":", "_")}_${level}`;
     const recipeId = mustjsUniqueRecipeIdArsN(recipeBase);
 
+    // Recipe
     e.custom({
         type: "ars_nouveau:enchantment",
         enchantment: enchantmentId,
@@ -1174,9 +1203,9 @@ function dispel_entity(e, entity, loot_conditions, loot_table) {
         !validateLootTableArsN(loot_table)
     ) {
         console.error(
-            `[MustJS] [${diagnosticId}] Dispel Entity: Invalid loot_table. \n` +
-            `Loot Table: ${loot_table}\n`+
-            "Expected a valid loot table resource location."
+            `[MustJS] [${diagnosticId}] Dispel Entity: Invalid loot_table. Loot Table: ${loot_table}.\n` +
+            "Suggestion: verify that the loot table ID is a valid resource location. " +
+            "Loot table existence is checked after the datapack reload completes."
         );
         error = true;
     }
